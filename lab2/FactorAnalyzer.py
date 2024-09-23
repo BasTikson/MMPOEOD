@@ -1,10 +1,9 @@
-from stringprep import b1_set
-
 import pandas as pd
-import numpy as np
+import math
 import os
+import re
 
-from PIL.PpmImagePlugin import b_whitespace
+
 
 z_arr = ['z1', 'z2', 'z3', 'z4']
 z_interactions_factors = ['z1z2', 'z1z3', 'z1z4', 'z2z3', 'z2z4', 'z3z4', 'z1z2z3', 'z1z2z4', 'z1z3z4', 'z2z3z4', 'z1z2z3z4'][::-1]
@@ -19,6 +18,8 @@ def get_elements_in_string(str_input):
 
 class FactorAnalyzer:
     def __init__(self, variant: int, file_input_2_3:str, file_input_2_4:str):
+
+        self.list_b = {}
 
         # Информация по вариантам
         self.variant_2_4_data_scaled = pd.DataFrame()
@@ -110,71 +111,6 @@ class FactorAnalyzer:
                     
                 self.variant_2_4_data_witch_value.loc[index, z] = value_in_bound
 
-    def  step_1st(self):
-        """
-        1. Рассчитать коэффициенты уравнения регрессии вида (2.5).
-        В уравнении участвуют четыре типа коэффициентов при первой,
-        второй, третей и четвертой степени.
-        :return:
-        """
-        self.calculate_b()
-
-
-    # Неправильная функция. Переделать
-    # Кажется ее смысл в том, чтобы складывать элементы
-    def calculate_b(self):
-        self.planning_matrix_calculate()
-        self.calculate_y_arithmetic_mean()
-        list_b = {}
-        list_y_arithmetic_mean = self.variant_2_4_data_scaled.loc[:, 'y_среднее'].to_list()
-
-        k = len(z_arr)
-        n = 2**k # где k - это кол-во изучаемых факторов
-
-        for index in range(len(list_y_arithmetic_mean)):
-            y_mean = list_y_arithmetic_mean[index]
-            list_b["b"] = y_mean
-            list_key = z_arr
-            for i in range(len(z_arr)):
-
-                if str(i) not in list_b.keys():
-                    list_b[str(i)] = 0
-                value = self.variant_2_4_data_scaled.loc[index, list_key[i]]
-                list_b[str(i)] += value ** y_mean
-
-                for bi in range(i):
-                    if bi < i:
-                        if str(bi) + str(i) not in list_b.keys():
-                            list_b[str(bi) + str(i)] = 0
-                        str_index = f"z{bi+1}z{i+1}"
-                        value_1 = self.variant_2_4_data_scaled.loc[index, str_index]
-                        list_b[str(bi) + str(i)] += value_1 * y_mean
-
-
-                    for g in range(bi):
-                        if i > bi > g:
-                            if str(g) + str(bi) + str(i) not in list_b.keys():
-                                list_b[str(g) + str(bi) + str(i)] = 0
-                            str_index_1 = f"z{g+1}z{bi + 1}z{i + 1}"
-                            value_2 = self.variant_2_4_data_scaled.loc[index, str_index_1]
-                            list_b[str(g) + str(bi) + str(i)] += value_2 * y_mean
-
-                        for h in range(g):
-                            if i > bi > g > h:
-                                if str(h) + str(g) + str(bi) + str(i) not in list_b.keys():
-                                    list_b[str(h) + str(g) + str(bi) + str(i)] = 0
-
-                                str_index_2 = f"z{h + 1}z{g + 1}z{bi + 1}z{i + 1}"
-                                value_3 = self.variant_2_4_data_scaled.loc[index, str_index_2]
-                                list_b[str(h) + str(g) + str(bi) + str(i)] += value_3 * y_mean
-
-        for i in list_b.keys():
-            list_b[i] /= len(list_y_arithmetic_mean)
-
-
-        for key, value in list_b.items():
-            print(key, value)
-
     @staticmethod
     def calculate_x_scaled(z_value, z_a):
         """
@@ -240,7 +176,6 @@ class FactorAnalyzer:
         print("Матрица планирования ПОСЛЕ масштабирования данных:")
         print(self.variant_2_4_data_scaled.to_markdown(index=False))
 
-
     def calculate_y_arithmetic_mean(self):
         """
         Функция рассчитывает среднее арифметическое y.
@@ -251,22 +186,62 @@ class FactorAnalyzer:
         print("Матрица планирования после вычисления Y средне-арифметического:")
         print(self.variant_2_4_data_scaled.to_markdown(index=False))
 
+    def calculate_b(self):
+        self.planning_matrix_calculate()
+        self.calculate_y_arithmetic_mean()
+        list_y_arithmetic_mean = self.variant_2_4_data_scaled.loc[:, 'y_среднее'].to_list()
+        list_z = z_arr + z_interactions_factors[::-1]
+        k = len(z_arr)
+        n = 2 ** k  # где k - это кол-во изучаемых факторов
+        for index in range(len(list_y_arithmetic_mean)):
+            y_mean = list_y_arithmetic_mean[index]
+            for i in list_z:
+                x_i = self.variant_2_4_data_scaled.loc[index, i]
+                numbers = re.sub(r'\D', '', i)
+                if f"b{numbers}" not in self.list_b.keys():
+                    self.list_b[f"b{numbers}"] = 0
+                self.list_b[f"b{numbers}"] += x_i*y_mean
+        for index, value_b in self.list_b.items():
+            self.list_b[index] = round(value_b / n, 3)
+
+        print("\n")
+        print("Коэффициенты уравнения регрессии:")
+        for key, value in self.list_b.items():
+            print(key, "=", value)
+
+    def step_1st(self):
+        """
+        1. Рассчитать коэффициенты уравнения регрессии вида (2.5).
+        В уравнении участвуют четыре типа коэффициентов при первой,
+        второй, третей и четвертой степени.
+        :return:
+        """
+        self.calculate_b()
+
+    def step_2st(self):
+        """
+        2. Проверить полученные коэффициенты на значимость (выделить значимые и незначимые),
+        с помощью критерия Стьюдента: если |b| > tкр * S, то соответствующий коэффициент b значим,
+        иначе – нет и его полагают равным нулю.
+
+        Уровень значимости для критической точки взять равным 0,05. tкр = t_cr = 0,05
+        n – число экспериментов (число строк в матрице планирования)
+        m – число опытов (наблюдений) в каждом эксперименте
+
+        :return:
+        """
+
+        n = 3
+        m = 16
+        some_sum = 1
 
 
 
+        print("\n")
+        print("Проверка полученных коэффициентов на значимость:")
+        for key, value in self.list_b.items():
 
+            # Расчет tкр * S
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            D_square = 1 / (n * (m - 1)) * some_sum
+            S = math.sqrt(D_square / n * m)
