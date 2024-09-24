@@ -11,6 +11,10 @@ def main():
         if 1 <= variant <= 40:
             fac_anal = FactorAnalyzer(variant, file_input_2_3, file_input_2_4)
             fac_anal.step_1st()
+            fac_anal.step_2st()
+            fac_anal.step_3st()
+            fac_anal.step_4st()
+            fac_anal.step_5st()
         else:
             print("\n")
             print("Выбран несуществующий вариант, выберите от 1 до 40!")
