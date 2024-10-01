@@ -32,8 +32,8 @@ class FactorAnalyzer:
 
         self.D_square = None # Дисперсия воспроизводимости
         self.S = None # Среднее квадратическое отклонение
-        self.t_cr = 0.05
-        self.F_table = 0.05
+        self.t_cr = 2.04 # тоже штука с инет атаблиц
+        self.F_table = 2.9 # зять инет это для 13 дов
         self.count_significant_element = 0
         self.list_b = {}
         self.minor_parameters_b = []
@@ -237,8 +237,15 @@ class FactorAnalyzer:
                 y_mean = self.variant_2_4_data_scaled.loc[i, "y_среднее"]
                 y_j = self.variant_2_4_data_scaled.loc[i, f"y{j + 1}"]
                 sum_mean_y += (y_j - y_mean) ** 2
+        print("\n")
+        print("sum_mean_y: ", sum_mean_y)
+        print("\n")
         self.D_square = (1 / (n * (m - 1))) * sum_mean_y
-        self.S = math.sqrt(self.D_square / n * m)
+        print("\n")
+        print("self.D_square: ", self.D_square)
+        print("\n")
+
+        self.S = math.sqrt(self.D_square /( n * m))
         print("\n")
         print(f"Значение критической точки S * t_cr = {round(self.S, 3)} * {self.t_cr} = {round(self.S * self.t_cr, 3)}")
 
